@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import datetime
 import sqlite3
-import os
+import pytz
 import logging
 
 # 配置日志
@@ -37,12 +37,14 @@ def init_db():
 
 
 # 转换时间
-def convert_timestamp(timestamp):
+def convert_timestamp(timestamp,timezone='Asia/Shanghai'):
     try:
         timestamp = int(timestamp)
         timestamp = timestamp / 1000
-        timestamp = datetime.datetime.fromtimestamp(timestamp)
-        timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        utc_time = datetime.datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.utc)
+        target_timezone = pytz.timezone(timezone)
+        local_time = utc_time.astimezone(target_timezone)
+        timestamp_str = local_time.strftime("%Y-%m-%d %H:%M:%S")
         return timestamp_str
     except Exception as e:
         logger.error(f"Failed to convert timestamp: {e}")
