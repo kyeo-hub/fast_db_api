@@ -24,6 +24,10 @@
             padding: 15px;
             text-align: left;
             border-bottom: 1px solid #ddd;
+            word-wrap: break-word; /* 确保内容自动换行 */
+            overflow-wrap: break-word; /* 确保内容自动换行 */
+            word-break: break-all; /* 强制在任何字符处换行 */
+            max-width: 200px; /* 设置最大宽度，防止过长内容导致布局问题 */
         }
         th {
             background-color: #007BFF;
