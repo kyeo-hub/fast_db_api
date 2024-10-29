@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>SMS Messages</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -43,21 +44,41 @@
 </head>
 <body>
     <h1>SMS Messages</h1>
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>手机号</th>
-            <th>内容</th>
-            <th>时间</th>
-        </tr>
-        {% for row in sms_list %}
-        <tr>
-            <td>{{ row[0] }}</td>
-            <td>{{ row[1] }}</td>
-            <td>{{ row[2] }}</td>
-            <td>{{ row[4] }}</td>
-        </tr>
-        {% endfor %}
+    <table id="smsTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>手机号</th>
+                <th>内容</th>
+                <th>时间</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in sms_list %}
+            <tr>
+                <td>{{ row[0] }}</td>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td>{{ row[4] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#smsTable').DataTable({
+                "paging": true, // 启用分页
+                "searching": true, // 启用搜索
+                "info": true, // 显示分页信息
+                "lengthMenu": [10, 25, 50, 100], // 每页显示的记录数选项
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/9dcbecd42ad/i18n/Chinese.json" // 使用中文语言包
+                }
+            });
+        });
+    </script>
 </body>
 </html>
