@@ -35,6 +35,7 @@
             border-bottom: 1px solid #ddd;
             border-right: none;
             border-left: none;
+
             /* border-bottom: 1px solid #ddd; */
         }
 
@@ -58,6 +59,13 @@
         .dataTables_filter {
             margin-bottom: 20px; /* 调整这个值来控制间距 */
         }
+        /* 特殊处理手机号列 */
+        .table td:nth-child(2) {
+            min-width: 98px; /* 设置最大宽度 */
+            word-break: break-all; /* 自动折行 */
+            white-space: normal; /* 允许换行 */
+        }
+
     </style>
 </head>
 
