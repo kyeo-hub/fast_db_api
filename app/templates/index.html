@@ -56,16 +56,34 @@
         .table tbody tr:nth-child(even) {
             background-color: #f1f1f1;
         }
+
         .dataTables_filter {
-            margin-bottom: 20px; /* 调整这个值来控制间距 */
-        }
-        /* 特殊处理手机号列 */
-        .table td:nth-child(2) {
-            min-width: 98px; /* 设置最大宽度 */
-            word-break: break-all; /* 自动折行 */
-            white-space: normal; /* 允许换行 */
+            margin-bottom: 20px;
+            /* 调整这个值来控制间距 */
         }
 
+        @media (max-width: 600px) {
+
+            /* 特殊处理手机号列 */
+            .table td:nth-child(2) {
+                min-width: 98px;
+                /* 设置最大宽度 */
+                word-break: break-all;
+                /* 自动折行 */
+                white-space: normal;
+                /* 允许换行 */
+            }
+
+            /* 特殊处理手机号列 */
+            .table td:nth-child(3) {
+                min-width: 98px;
+                /* 设置最大宽度 */
+                word-break: break-all;
+                /* 自动折行 */
+                white-space: normal;
+                /* 允许换行 */
+            }
+        }
     </style>
 </head>
 
