@@ -8,8 +8,8 @@ WORKDIR /app
 COPY app/ /app/
 
 # 安装依赖
-RUN python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
-RUN pip install --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+RUN python -m pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 暴露端口
 EXPOSE 8000
