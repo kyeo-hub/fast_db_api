@@ -1,120 +1,67 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-import datetime
-import sqlite3
-import pytz
-import logging
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+from contextlib import asynccontextmanager
+import os
 
-# 配置日志
-logging.basicConfig(
-    filename='app.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+DATABASE_URL = "mysql+pymysql://{user}:{password}@{host}:{port}/{dbname}".format(
+    user=os.getenv("DB_USER", "root"),
+    password=os.getenv("DB_PASSWORD", ""),
+    host=os.getenv("DB_HOST", ""),
+    port=os.getenv("DB_PORT", "3306"),
+    dbname=os.getenv("DB_NAME", "gallery"))
+
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:8080,http://localhost")
+# 生命周期管理（连接池只创建一次）
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 初始化连接池
+    engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
+    SessionLocal = sessionmaker(bind=engine)
+    app.state.engine = engine
+    app.state.SessionLocal = SessionLocal
+    yield
+    # 关闭连接池
+    engine.dispose()
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-logger = logging.getLogger(__name__)
 
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# 配置模板目录
-templates = Jinja2Templates(directory="templates")
-
-
-# 初始化数据库
-def init_db():
+# 依赖注入获取数据库会话
+def get_db():
+    db = app.state.SessionLocal()
     try:
-        conn = sqlite3.connect("sms.db")
-        cursor = conn.cursor()
-        cursor.execute(
-            """CREATE TABLE IF NOT EXISTS sms (id INTEGER PRIMARY KEY, sender TEXT, message TEXT, timestamp TEXT, time TEXT)"""
-        )
-        conn.commit()
-        conn.close()
-        logger.info("Database initialized successfully.")
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        raise
+        yield db
+    finally:
+        db.close()
 
 
-# 转换时间
-def convert_timestamp(timestamp,timezone='Asia/Shanghai'):
+@app.get("/photos")
+def fetch_photos(db=Depends(get_db)):
     try:
-        timestamp = int(timestamp)
-        timestamp = timestamp / 1000
-        utc_time = datetime.datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.utc)
-        target_timezone = pytz.timezone(timezone)
-        local_time = utc_time.astimezone(target_timezone)
-        timestamp_str = local_time.strftime("%Y-%m-%d %H:%M:%S")
-        return timestamp_str
+        result = db.execute(text("SELECT * FROM images"))
+        # 直接使用 SQLAlchemy 的 row 转 dict 功能
+        dict_list = [
+            {
+                "id": row.image_id,
+                "photo_id": row.post_id,
+                "url": row.url,
+                "created_at": row.created_at.isoformat()  # 直接序列化 datetime
+            }
+            for row in result
+        ]
+        
+        return dict_list
+    except SQLAlchemyError as e:
+        raise HTTPException(500, detail=f"Database error: {str(e)}")
     except Exception as e:
-        logger.error(f"Failed to convert timestamp: {e}")
-        return "Invalid timestamp"
-
-
-# 在应用启动时初始化数据库
-@app.on_event("startup")
-def startup():
-    init_db()
-
-
-# 接收 SMS 信息的 Webhook
-@app.post("/webhook")
-async def webhook(request: Request):
-    try:
-        data = await request.json()
-        sender = data.get("sender")
-        message = data.get("message")
-        timestamp = data.get("timestamp")
-
-        if not all([sender, message, timestamp]):
-            raise HTTPException(status_code=400, detail="Missing required fields")
-
-        if timestamp:
-            # 转换时间戳
-            time = convert_timestamp(timestamp)
-        else:
-            time = "No timestamp found"
-
-        conn = sqlite3.connect("sms.db")
-        cursor = conn.cursor()
-        cursor.execute(
-            """INSERT INTO sms (sender, message, timestamp, time) VALUES (?, ?, ?, ?)""",
-            (sender, message, timestamp, time),
-        )
-        conn.commit()
-        conn.close()
-        logger.info("SMS received and stored successfully.")
-        return {"status": "success"}
-    except HTTPException as he:
-        logger.error(f"HTTPException: {he.detail}")
-        raise
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# 提供 Web 页面展示 SMS 信息
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    try:
-        conn = sqlite3.connect("sms.db")
-        cursor = conn.cursor()
-        cursor.execute("""SELECT * FROM sms""")
-        rows = cursor.fetchall()
-        conn.close()
-        logger.info("Fetched SMS list successfully.")
-        return templates.TemplateResponse(
-            "index.html", {"request": request, "sms_list": rows}
-        )
-    except Exception as e:
-        logger.error(f"An error occurred: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# 启动应用
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+        raise HTTPException(500, detail=str(e))
